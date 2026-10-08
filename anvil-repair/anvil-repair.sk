@@ -1,0 +1,112 @@
+options:
+    repair-item: iron block # Required item for repair
+    repair-remove-amount: 1 # Items consumed per repair
+    repair-step-delay: 0.5 seconds # Delay between repair steps
+    repair-bar-segments: 10 # Number of progress bar segments
+on load:
+    delete {anvilrepair.busy::*}
+    delete {anvilrepair.lock::*}
+on right click:
+    if player is not sneaking:
+        stop
+    if player's tool is not {@repair-item}:
+        stop
+    if clicked block is not set:
+        stop
+    set {_b} to clicked block
+    if {_b} is anvil:
+        send "&cThis anvil does not need repairing!" to player
+        stop
+    if {_b} is damaged anvil or chipped anvil:
+        cancel event
+        if {anvilrepair.busy::%uuid of player%} is set:
+            send "&cYou are already repairing an anvil!" to player
+            stop
+        set {_key} to "%location of {_b}%"
+        if {anvilrepair.lock::%{_key}%} is set:
+            send "&cSomeone is already repairing this anvil!" to player
+            stop
+        if amount of player's tool < {@repair-remove-amount}:
+            send "&cNot enough items to repair! &fRequired: {@repair-remove-amount}" to player
+            stop
+        anvilRepair(player, {_b})
+function anvilRepair(p: player, b: block):
+    set {_key} to "%location of {_b}%"
+    set {_original} to type of {_b}
+    if {_original} is damaged anvil:
+        set {_result} to chipped anvil
+    else:
+        set {_result} to anvil
+    set {anvilrepair.busy::%uuid of {_p}%} to {_key}
+    set {anvilrepair.lock::%{_key}%} to true
+    set {_pos} to location of {_b}
+    add 0.5 to y-coordinate of {_pos}
+    anvilEffects({_p}, {_pos}, true)
+    loop 7 times:
+        wait {@repair-step-delay}
+        if {_p} is not online:
+            set {_aborted} to true
+            stop loop
+        if {anvilrepair.busy::%uuid of {_p}%} is not {_key}:
+            set {_aborted} to true
+            stop loop
+        set {_step} to loop-number - 1
+        make {_p} swing main hand
+        set {_sound} to false
+        if {_step} is 1 or 3 or 6:
+            set {_sound} to true
+        anvilEffects({_p}, {_pos}, {_sound})
+        send action bar anvilProgress({_step}) to {_p}
+    if {_aborted} is not true:
+        if type of {_b} is not {_original}:
+            set {_aborted} to true
+            send "&cRepair interrupted! &fThe anvil was modified." to {_p}
+        else if {_p}'s tool is not {@repair-item}:
+            set {_aborted} to true
+            send "&cRepair interrupted! &fRepair item removed from your hand." to {_p}
+        else if amount of {_p}'s tool < {@repair-remove-amount}:
+            set {_aborted} to true
+            send "&cRepair interrupted! &fNot enough items." to {_p}
+    if {_aborted} is not true:
+        set block at {_b} to {_result}
+        if amount of {_p}'s tool > {@repair-remove-amount}:
+            remove {@repair-remove-amount} {@repair-item} from {_p}'s tool
+        else:
+            clear {_p}'s tool
+        if {_result} is anvil:
+            send "&3You fully repaired the anvil!" to {_p}
+        else:
+            send "&3You partially repaired the anvil!" to {_p}
+    delete {anvilrepair.lock::%{_key}%}
+    if {anvilrepair.busy::%uuid of {_p}%} is {_key}:
+        delete {anvilrepair.busy::%uuid of {_p}%}
+function anvilEffects(p: player, pos: location, sound: boolean):
+    set {_x} to x-coordinate of {_pos}
+    set {_y} to y-coordinate of {_pos}
+    set {_z} to z-coordinate of {_pos}
+    execute console command "execute at %{_p}% positioned %{_x}% %{_y}% %{_z}% run particle minecraft:block{block_state:{Name:""anvil"",Properties:{}}} %{_x}% %{_y}% %{_z}% 0.1 0.1 0.1 10 10 force @a[distance=..48]"
+    if {_sound} is true:
+        execute console command "execute at %{_p}% positioned %{_x}% %{_y}% %{_z}% run playsound minecraft:block.anvil.use block @a[distance=..48] %{_x}% %{_y}% %{_z}% 3 1"
+function anvilProgress(step: number) :: text:
+    set {_bar} to "&3Anvil repair progress: &f"
+    loop {@repair-bar-segments} times:
+        set {_need} to loop-number / {@repair-bar-segments} * 6
+        if {_need} <= {_step}:
+            add "&a|" to {_bar}
+        else:
+            add "&c|" to {_bar}
+    return {_bar}
+on player move or turn around:
+    if {anvilrepair.busy::%uuid of player%} is set:
+        cancel event
+on break:
+    if {anvilrepair.busy::%uuid of player%} is set:
+        cancel event
+on quit:
+    delete {anvilrepair.busy::%uuid of player%}
+every 10 ticks:
+    loop all players:
+        if {anvilrepair.busy::%uuid of loop-player%} is not set:
+            set {_b} to actual targeted block of loop-player
+            if {_b} is damaged anvil or chipped anvil:
+                send action bar "&3You can repair this anvil! Sneak + Right-click while holding an iron block" to loop-player
