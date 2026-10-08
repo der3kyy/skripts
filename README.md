@@ -5,3 +5,7 @@ A collection of scripts for the [Skript](https://github.com/SkriptLang/Skript) p
 ## Scripts
 
 - [Anvil Repair](./anvil-repair/) — Repair damaged anvils with iron blocks, particles, sounds, and a progress bar.
+
+## License
+
+Licensed under the [MIT License](./LICENSE).
