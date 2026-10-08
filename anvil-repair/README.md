@@ -22,3 +22,7 @@ A Minecraft [Skript](https://github.com/SkriptLang/Skript) script that repairs a
 The script consumes **1 iron block per repair stage**. Each repair takes **3.5 seconds**, with a **10-segment progress bar**. Edit the `options` section at the beginning of the script to customize these values.
 
 > The script has not been independently tested as part of this repository upload.
+
+## License
+
+This script is distributed under the [MIT License](../LICENSE).
